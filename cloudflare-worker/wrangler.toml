@@ -1,0 +1,25 @@
+name = "seo-discoverly-worker"
+main = "src/index.ts"
+compatibility_date = "2024-06-29"
+
+# KV Namespace for caching JSON-LD data
+[[kv_namespaces]]
+binding = "SEO_CACHE"
+id = "seo_cache_namespace_id"
+
+# Environment variables
+[vars]
+BACKEND_API_URL = "https://your-backend-domain.com"
+API_KEY = "your-worker-api-key"
+
+# Production environment
+[env.production]
+[env.production.vars]
+BACKEND_API_URL = "https://your-production-backend.com"
+API_KEY = "your-production-api-key"
+
+# Development environment
+[env.development]
+[env.development.vars]
+BACKEND_API_URL = "http://localhost:5000"
+API_KEY = "default-worker-key"

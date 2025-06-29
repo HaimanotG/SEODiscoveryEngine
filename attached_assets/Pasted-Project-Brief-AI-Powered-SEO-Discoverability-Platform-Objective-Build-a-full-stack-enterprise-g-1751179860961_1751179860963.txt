@@ -1,0 +1,105 @@
+Project Brief: AI-Powered SEO & Discoverability Platform
+Objective: Build a full-stack, enterprise-grade, AI-integrated platform that makes websites fully visible and understandable to AI crawlers and traditional search engines. The system will use a Cloudflare Worker at the edge to intercept page requests, trigger a backend analysis workflow using a Large Language Model (LLM) to generate Schema.org JSON-LD, and inject this data into the site's HTML in real time.
+
+Core Principles: The entire system must be designed for scalability, maintainability, and configurability. Adherence to clean code practices is paramount.
+
+Task 1: User-Facing Dashboard (Next.js App)
+Build a clean, modern, and responsive user-facing dashboard using Next.js and Tailwind CSS.
+
+Key Features & Flow:
+
+Home/Login Page: A simple landing page explaining the value proposition with a prominent "Connect with Cloudflare" button.
+
+Cloudflare OAuth2 Integration:
+
+Implement a standard, secure OAuth2 flow to connect a user's Cloudflare account.
+
+Create a dedicated callback route (e.g., /oauth/cloudflare/callback) to handle the redirect and pass the authorization_code to the backend.
+
+Dashboard UI & State Management:
+
+Clearly display connection status: Not Connected, Connecting..., Connected, Error.
+
+Once connected, list the user's domain(s) being managed.
+
+Provide a secure "Disconnect" feature that revokes tokens and cleans up resources via an authenticated backend API call.
+
+Scalability Note: The frontend should be built with efficient state management and optimized API call patterns to handle a large number of users and domains smoothly.
+
+Task 2: Backend System (Node.js)
+Build a secure, highly scalable, and configurable backend using Node.js with Express.js or a similar modern framework.
+
+Architectural Principles (Mandatory)
+Layered Architecture & Separation of Concerns: Structure the application into distinct layers:
+
+Controllers/Routes: Handle incoming HTTP requests and responses.
+
+Services: Contain the core business logic (e.g., onboardingService, analysisService).
+
+Adapters/Interfaces: Abstract all external services (LLMs, Databases, Cloudflare API). This is critical for configurability.
+
+Configuration: Centralize all environment-specific variables and settings.
+
+Adapter Pattern for Configurability: Do not hard-code dependencies on external services.
+
+LLM Adapter: Create a generic LlmAdapter interface. Implement specific classes like GeminiAdapter, OpenAiAdapter, etc., that conform to this interface. The application should use the LlmAdapter, and the specific implementation should be determined by a configuration setting (e.g., LLM_PROVIDER=GEMINI). This allows for swapping LLM providers without changing any business logic.
+
+Database Adapter: Use a modern ORM like Drizzle, Prisma or TypeORM. This abstracts the database layer, making it straightforward to switch from Firestore to a relational database like PostgreSQL in the future if needed. Define clear data models/schemas.
+
+Clean Code & Documentation: The code must be well-documented, with clear function headers, comments on complex logic, and a README explaining the architecture and setup. Follow industry-standard style guides (e.g., Airbnb).
+
+Key Services & APIs:
+Cloudflare OAuth & Onboarding API:
+
+Implement the OAuth callback handler to securely exchange the authorization_code for tokens.
+
+Encrypt all sensitive credentials (tokens, API keys) before storing them in the database.
+
+Create an onboarding service that uses the tokens to programmatically configure the user's Cloudflare account (fetch zone_id, create worker route). This logic should be idempotent (safely re-runnable).
+
+Asynchronous Content Analysis Workflow:
+
+To ensure maximum scalability and resilience, decouple the initial request from the heavy LLM processing.
+
+Create an endpoint (POST /api/v1/jobs/analyze) that the Cloudflare Worker will call. This endpoint should be lightweight: it validates the request, creates a job, and pushes it into a message queue (e.g., RabbitMQ, or a managed service like AWS SQS or Google Cloud Pub/Sub). It should then immediately return a 202 Accepted response.
+
+Create a separate pool of Backend Workers (running as independent processes) that listen to this queue. These workers are responsible for:
+a.  Picking up an analysis job.
+b.  Calling the appropriate LlmAdapter to generate the structured data.
+c.  On success, writing the resulting JSON-LD directly to the Cloudflare KV Store, keyed by the page URL.
+d.  Implementing robust error handling, including retries with exponential backoff and a dead-letter queue for jobs that repeatedly fail.
+
+Security:
+
+Secure all internal APIs with a robust authentication/authorization mechanism (e.g., API Keys for the worker, JWT for users).
+
+Use environment variables for ALL secrets. Do not commit secrets to version control.
+
+Task 3: Cloudflare Worker (Edge Injection System)
+Write a high-performance Cloudflare Worker in JavaScript/TypeScript optimized for low latency.
+
+Updated Workflow for Scalability:
+
+Intercept Request & Cache Check:
+
+Trigger on all relevant requests. Create a cache key from the URL.
+
+Check Cloudflare KV for this key.
+
+Cache Hit: If found, retrieve the JSON-LD and proceed immediately to injection.
+
+Cache Miss: Let the request proceed to the origin server.
+
+Fire-and-Forget Analysis:
+
+As the response streams back from the origin, asynchronously make a non-blocking fetch call to the backend's /api/v1/jobs/analyze endpoint, passing the HTML content.
+
+Crucially, do not wait for the backend's response. The goal is to trigger the analysis without adding latency to the current user's request.
+
+Always serve the original HTML to the user on a cache miss. The AI-generated data for this page will be available for the next visitor.
+
+Real-Time HTML Injection (on Cache Hit):
+
+When the KV store provides the JSON-LD (on subsequent visits), use HTMLRewriter to stream-inject the <script type="application/ld+json">...</script> tag into the <head> of the HTML. This ensures minimal latency.
+
+Resilience: The worker must be extremely resilient. Any failure in its own logic or in the async call to the backend must not interfere with serving the original website content to the end-user.

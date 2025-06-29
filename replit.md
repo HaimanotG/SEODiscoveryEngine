@@ -13,13 +13,19 @@ SEO Discoverly is a full-stack, enterprise-grade, AI-integrated platform that ma
 - **State Management**: TanStack React Query for server state
 - **Build Tool**: Vite with custom configuration for monorepo structure
 
-### Backend Architecture
-- **Framework**: Express.js with TypeScript
-- **Architecture Pattern**: Layered architecture with clear separation of concerns
-  - Controllers/Routes: Handle HTTP requests and responses
-  - Services: Core business logic (OnboardingService, AnalysisService)
-  - Adapters: Abstract external services for configurability
-  - Storage: Database abstraction layer
+### Backend Architecture (Refactored to NestJS + DDD)
+- **Framework**: NestJS with TypeScript (refactored from Express.js)
+- **Architecture Pattern**: Domain-Driven Design (DDD) + Hexagonal Architecture + CQRS
+- **Structure**:
+  - **Presentation Layer** (`src/presentation/`): Controllers, DTOs, and HTTP handling
+  - **Application Layer** (`src/application/`): Use cases, commands, queries, and handlers
+  - **Domain Layer** (`src/domain/`): Pure business entities and logic
+  - **Infrastructure Layer** (`src/infrastructure/`): Database, external services, repositories
+- **Patterns**:
+  - **CQRS**: Command Query Responsibility Segregation for scalable operations
+  - **Hexagonal Architecture**: Ports and adapters for loose coupling
+  - **Repository Pattern**: Database abstraction with proper interfaces
+  - **Dependency Injection**: NestJS IoC container for modularity
 
 ### Database
 - **ORM**: Drizzle ORM with PostgreSQL (configured for Neon)
@@ -91,6 +97,7 @@ SEO Discoverly is a full-stack, enterprise-grade, AI-integrated platform that ma
 ## Changelog
 
 - June 29, 2025. Initial setup
+- June 29, 2025. Refactored server architecture to NestJS with Domain-Driven Design (DDD), Hexagonal Architecture, and CQRS patterns for improved scalability and maintainability
 
 ## User Preferences
 
